@@ -5,16 +5,11 @@ import { PipeManager } from './objects/pipe.js';
 import { Background, Ground } from './scenes/background.js';
 import { InputHandler } from './game/input.js';
 import { GameLoop } from './game/loops.js';
+import { TextRenderer } from './game/textRenderer.js';
 
 // DOM Elements
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-const scoreDisplay = document.getElementById('score');
-const messageDisplay = document.getElementById('message');
-const coinCounterEl = document.getElementById('coinCounter');
-const coinCountEl = document.getElementById('coinCount');
-const bestScoreDisplayEl = document.getElementById('bestScoreDisplay');
-const bestScoreValueEl = document.getElementById('bestScoreValue');
 
 // LocalStorage Keys
 const STORAGE_KEYS = {
@@ -71,6 +66,8 @@ const ground = new Ground(canvas);
 // Score
 let score = 0;
 let coinsCollected = 0;
+let bestScore = 0;
+let totalCoins = 0;
 
 // Handle player input (jump/start)
 function handleInput() {
@@ -83,9 +80,8 @@ function handleInput() {
         gameState = 'playing';
         score = 0;
         coinsCollected = 0;
-        scoreDisplay.textContent = '0';
-        messageDisplay.style.display = 'none';
-        coinCountEl.textContent = '0';
+        bestScore = getBestScore();
+        totalCoins = getTotalCoins();
         bird.reset();
         pipeManager.reset();
         ground.reset();
@@ -112,22 +108,44 @@ function render() {
     // Draw bird (or bobbing animation on start screen)
     if (gameState === 'start') {
         bird.drawBobbing(ctx, performance.now());
+        // Draw start screen text on canvas
+        TextRenderer.drawStartScreen(ctx, canvas.width, canvas.height);
     } else {
         bird.draw(ctx);
+        
+        // Draw score at top center (canvas-based)
+        TextRenderer.drawScore(ctx, score);
+        
+        // Draw best score in top-right corner (canvas-based)
+        if (gameState === 'playing' || gameState === 'gameover') {
+            TextRenderer.drawBestScore(ctx, bestScore);
+        }
+        
+        // Draw difficulty indicator during gameplay
+        drawDifficultyIndicator();
+        
+        // Draw coin counter during gameplay
+        if (gameState === 'playing') {
+            drawCoinCounter();
+        }
     }
     
-    // Draw difficulty indicator during gameplay
-    if (gameState === 'playing' || gameState === 'gameover') {
-        drawDifficultyIndicator();
-    }
-
-    // Draw coin counter during gameplay
-    if (gameState === 'playing') {
-        drawCoinCounter();
+    // Draw game over screen on canvas
+    if (gameState === 'gameover') {
+        TextRenderer.drawGameOverScreen(
+            ctx,
+            canvas.width,
+            canvas.height,
+            score,
+            coinsCollected,
+            bestScore,
+            totalCoins,
+            pipeManager.getDifficultyLevel(score)
+        );
     }
 }
 
-// Draw coin counter HUD
+// Draw coin counter HUD (canvas-based)
 function drawCoinCounter() {
     const totalDisplay = coinsCollected;
     
@@ -159,6 +177,8 @@ function drawCoinCounter() {
     ctx.font = 'bold 16px Arial';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
+    ctx.shadowColor = 'rgba(0,0,0,0.5)';
+    ctx.shadowBlur = 4;
     ctx.fillText(totalDisplay.toString(), 45, 27);
 }
 
@@ -187,7 +207,6 @@ const gameLoop = new GameLoop(
             // Update pipes (with coin collection callback)
             pipeManager.update(bird, () => {
                 score++;
-                scoreDisplay.textContent = score;
                 
                 // Update difficulty display when level changes
                 if (pipeManager.getDifficultyLevel(score) !== currentDifficultyLevel) {
@@ -197,7 +216,6 @@ const gameLoop = new GameLoop(
             }, () => setGameOver(), () => {
                 // Coin collected callback
                 coinsCollected++;
-                coinCountEl.textContent = coinsCollected.toString();
             });
 
             // Get current speed for ground/background scrolling
@@ -235,11 +253,15 @@ function drawDifficultyIndicator() {
     ctx.fillStyle = getDifficultyColor(difficultyInfo.level);
     ctx.font = 'bold 14px Arial';
     ctx.textAlign = 'right';
+    ctx.shadowColor = 'rgba(0,0,0,0.5)';
+    ctx.shadowBlur = 4;
     ctx.fillText(`LEVEL ${difficultyInfo.level}`, canvas.width - 20, 30);
     
     // Stats
     ctx.fillStyle = '#ffffff';
     ctx.font = '11px Arial';
+    ctx.shadowColor = 'rgba(0,0,0,0.5)';
+    ctx.shadowBlur = 4;
     ctx.fillText(`Speed: ${difficultyInfo.pipeSpeed.toFixed(1)}`, canvas.width - 20, 48);
     ctx.fillText(`Gap: ${difficultyInfo.gap.toFixed(0)}px`, canvas.width - 20, 63);
     ctx.fillText(`Spawn: ${difficultyInfo.spawnInterval}f`, canvas.width - 20, 78);
@@ -265,14 +287,8 @@ function startGame() {
     gameState = 'playing';
     score = 0;
     coinsCollected = 0;
-    scoreDisplay.textContent = '0';
-    messageDisplay.style.display = 'none';
-    coinCountEl.textContent = '0';
-    
-    // Show HUD elements during gameplay
-    coinCounterEl.style.display = 'flex';
-    bestScoreDisplayEl.style.display = 'block';
-    bestScoreValueEl.textContent = getBestScore();
+    bestScore = getBestScore();
+    totalCoins = getTotalCoins();
     
     bird.reset();
     pipeManager.reset();
@@ -289,17 +305,6 @@ function setGameOver() {
     setBestScore(score);
     addTotalCoins(coinsCollected);
     
-    const bestScore = getBestScore();
-    const totalCoins = getTotalCoins();
-    
-    messageDisplay.innerHTML = `
-        <h1>Game Over!</h1>
-        <p>Score: ${score}</p>
-        <p>Coins Collected: ${coinsCollected}</p>
-        <p>Best Score: ${bestScore}</p>
-        <p>Total Coins: ${totalCoins}</p>
-        <p>Difficulty Reached: Level ${pipeManager.getDifficultyLevel(score)}</p>
-        <p>Press SPACE or Click to Restart</p>
-    `;
-    messageDisplay.style.display = 'block';
+    bestScore = getBestScore();
+    totalCoins = getTotalCoins();
 }
