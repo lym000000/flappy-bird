@@ -20,7 +20,7 @@ export class PipeManager {
         this.pipes = [];
         this.coins = [];
         this.difficultyLevel = 1; // Reset to level 1
-        this.onCoinCollect = null;
+        // Note: onCoinCollect is intentionally preserved (set once via setOnCoinCollect)
         this.totalCoinsCollected = 0;
     }
 
