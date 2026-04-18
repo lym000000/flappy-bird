@@ -42,6 +42,17 @@ export const BOBBING_CONFIG = {
     frequency: 300
 };
 
+// Pet companion configuration
+export const PET_CONFIG = {
+    width: 30,
+    height: 24,
+    defaultOffsetX: -30,  // Default resting position X relative to bird
+    defaultOffsetY: 10,   // Default resting position Y relative to bird
+    orbitRadius: 45,      // Radius for orbiting behavior
+    maxDistance: 70,      // Maximum distance from bird
+    minDistance: 25       // Minimum distance from bird (prevent overlap)
+};
+
 // ============================================================
 // DAY CYCLE THEME CONFIGURATION
 // ============================================================

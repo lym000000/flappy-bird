@@ -1,11 +1,13 @@
 // Main Game Controller
 import { GROUND_HEIGHT } from './config/constants.js';
 import { Bird } from './objects/bird.js';
+import { Pet } from './objects/pet.js';
 import { PipeManager } from './objects/pipe.js';
 import { Background, Ground } from './scenes/background.js';
 import { InputHandler } from './game/input.js';
 import { GameLoop } from './game/loops.js';
 import { TextRenderer } from './game/textRenderer.js';
+import { getParticleManager, createDeathParticles, createPipeCollisionParticles } from './objects/particles.js';
 
 // DOM Elements
 const canvas = document.getElementById('gameCanvas');
@@ -58,7 +60,9 @@ function addTotalCoins(amount) {
 let gameState = 'start'; // start, playing, gameover
 
 // Initialize game components
+const particleManager = getParticleManager();
 const bird = new Bird(canvas);
+const pet = new Pet();
 const pipeManager = new PipeManager(canvas);
 const background = new Background(canvas);
 const ground = new Ground(canvas);
@@ -83,6 +87,7 @@ function handleInput() {
         bestScore = getBestScore();
         totalCoins = getTotalCoins();
         bird.reset();
+        pet.reset();
         pipeManager.reset();
         ground.reset();
         background.init();
@@ -101,6 +106,13 @@ function render() {
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+    // Save context before applying screen shake
+    ctx.save();
+
+    // Apply screen shake offset (and restore will undo it)
+    const shakeOffset = particleManager.getScreenShakeOffset();
+    ctx.translate(shakeOffset.x, shakeOffset.y);
+
     // Draw background
     background.draw(ctx);
 
@@ -111,23 +123,42 @@ function render() {
     // Draw bird (or bobbing animation on start screen)
     if (gameState === 'start') {
         bird.drawBobbing(ctx, performance.now());
+        // Draw pet companion on start screen
+        pet.draw(ctx, bird.x, bird.y);
         // Draw start screen text on canvas
         TextRenderer.drawStartScreen(ctx, canvas.width, canvas.height);
-    } else {
+    } else if (gameState === 'playing') {
+        // Draw main bird during gameplay
         bird.draw(ctx);
+        // Draw pet companion following the bird
+        pet.draw(ctx, bird.x, bird.y);
         
         // Draw score at top center (canvas-based)
         TextRenderer.drawScore(ctx, score);
         
         // Draw best score in top-right corner (canvas-based)
-        if (gameState === 'playing' || gameState === 'gameover') {
-            TextRenderer.drawBestScore(ctx, bestScore);
-        }
+        TextRenderer.drawBestScore(ctx, bestScore);
         
-        // Draw difficulty indicator during gameplay and game over
+        // Draw difficulty indicator during gameplay
         drawDifficultyIndicator();
         
-        // Draw coin counter during gameplay and game over
+        // Draw coin counter during gameplay
+        drawCoinCounter();
+    } else if (gameState === 'gameover') {
+        // Main bird disappears after death, but pet companion flies freely
+        // Draw pet companion flying away
+        pet.drawFlyingAway(ctx);
+        
+        // Draw score at top center (canvas-based)
+        TextRenderer.drawScore(ctx, score);
+        
+        // Draw best score in top-right corner (canvas-based)
+        TextRenderer.drawBestScore(ctx, bestScore);
+        
+        // Draw difficulty indicator during game over
+        drawDifficultyIndicator();
+        
+        // Draw coin counter during game over
         drawCoinCounter();
     }
 
@@ -144,6 +175,12 @@ function render() {
             pipeManager.getDifficultyLevel(score)
         );
     }
+
+    // Restore context to remove screen shake offset
+    ctx.restore();
+
+    // Draw particle effects on top (without shake)
+    particleManager.draw(ctx);
 }
 
 // Draw coin counter HUD (canvas-based) - moved to bottom left
@@ -203,8 +240,11 @@ const gameLoop = new GameLoop(
     // onUpdate callback
     (frameCount) => {
         if (gameState === 'playing') {
-            // Update difficulty level based on score
+            // Update difficulty level based on score (every 5 scores)
             const currentDifficultyLevel = pipeManager.getDifficultyLevel(score);
+            if (currentDifficultyLevel !== pipeManager.difficultyLevel) {
+                pipeManager.difficultyLevel = currentDifficultyLevel;
+            }
             
             // Only spawn pipes if frame matches the current spawn interval
             const currentSpawnInterval = pipeManager.getCurrentSpawnInterval();
@@ -216,23 +256,51 @@ const gameLoop = new GameLoop(
 
             // Update bird
             const hitGround = bird.update();
+            
+            // Check ground collision - hitting the ground means game over
             if (hitGround) {
+                // Create death particles at bird center
+                const deathParticles = createDeathParticles(
+                    bird.x + bird.width / 2,
+                    bird.y + bird.height / 2
+                );
+                particleManager.addParticles(deathParticles);
+                
+                // Trigger screen shake
+                particleManager.triggerScreenShake(15);
+                
                 setGameOver();
             }
-
+            
+            // Update pet to follow the bird
+            pet.update(bird);
+            
             // Update pipes (with coin collection callback)
-            pipeManager.update(bird, () => {
-                score++;
-                
-                // Update difficulty display when level changes
-                if (pipeManager.getDifficultyLevel(score) !== currentDifficultyLevel) {
-                    pipeManager.difficultyLevel = pipeManager.getDifficultyLevel(score);
-                    updateDifficultyDisplay(pipeManager.getDifficultyInfo());
+            // pipe.js update signature: update(bird, onScore, onCollision, onCoinCollect)
+            pipeManager.update(bird,
+                // onScore - called when bird passes pipe
+                () => {
+                    score++;
+                },
+                // onCollision - called when bird hits pipe (triggers death)
+                () => {
+                    // Create death particles at bird center
+                    const deathParticles = createDeathParticles(
+                        bird.x + bird.width / 2,
+                        bird.y + bird.height / 2
+                    );
+                    particleManager.addParticles(deathParticles);
+                    
+                    // Trigger screen shake
+                    particleManager.triggerScreenShake(15);
+                    
+                    setGameOver();
+                },
+                // onCoinCollect - called when bird collects coin
+                () => {
+                    coinsCollected++;
                 }
-            }, () => setGameOver(), () => {
-                // Coin collected callback
-                coinsCollected++;
-            });
+            );
 
             // Get current speed for ground/background scrolling
             const currentSpeed = pipeManager.getCurrentPipeSpeed();
@@ -246,6 +314,10 @@ const gameLoop = new GameLoop(
         } else if (gameState === 'start') {
             // Bobbing animation handled in render
         }
+
+        // Update particle effects every frame (including game over state)
+        // This ensures death particles continue animating during game over
+        particleManager.update();
     },
     render
 );
@@ -266,7 +338,7 @@ function drawDifficultyIndicator() {
     const pillHeight = 55;
     const x = canvasWidth - pillWidth - 15;
     const coinY = canvasHeight - 35 - 15; // coin counter Y position
-    const y = coinY - pillHeight - 10; // 10px gap above coins
+    const y = coinY - 10; // 10px gap above coins
     
     // Semi-transparent background for the HUD
     ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
@@ -309,6 +381,8 @@ function updateDifficultyDisplay(difficultyInfo) {
 
 // Start game
 function startGame() {
+    // Reset particle effects
+    particleManager.reset();
     gameState = 'playing';
     score = 0;
     coinsCollected = 0;
@@ -316,6 +390,7 @@ function startGame() {
     totalCoins = getTotalCoins();
     
     bird.reset();
+    pet.reset();
     pipeManager.reset();
     ground.reset();
     background.init();

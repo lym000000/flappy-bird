@@ -1,5 +1,6 @@
 // Bird Object
 import { GRAVITY, JUMP_FORCE, BIRD_CONFIG, BOBBING_CONFIG, GROUND_HEIGHT } from '../config/constants.js';
+import { createFeatherTrail, getParticleManager } from './particles.js';
 
 export class Bird {
     constructor(canvas) {
@@ -21,6 +22,12 @@ export class Bird {
 
     jump() {
         this.velocity = JUMP_FORCE;
+        // Emit feather trail particles when flapping
+        const pm = getParticleManager();
+        if (pm) {
+            const feathers = createFeatherTrail(this.x + this.width / 2, this.y + this.height / 2);
+            pm.addParticles(feathers);
+        }
     }
 
     update() {

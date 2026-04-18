@@ -173,12 +173,18 @@ export class PipeManager {
             // Collision detection - only check against this pipe
             if (!collisionOccurred && this.checkCollision(bird, pipe)) {
                 collisionOccurred = true;
+                this._lastCollisionPoint = this.getCollisionPoint(bird, pipe);
             }
         }
         
         // Call onCollision once after checking all pipes
         if (collisionOccurred) {
-            onCollision();
+            // Pass collision point to callback if available
+            if (this._lastCollisionPoint) {
+                onCollision(this._lastCollisionPoint.x, this._lastCollisionPoint.y);
+            } else {
+                onCollision();
+            }
         }
     }
 
@@ -198,6 +204,17 @@ export class PipeManager {
 
         const distanceSquared = distanceX * distanceX + distanceY * distanceY;
         return distanceSquared < (coin.radius * coin.radius);
+    }
+
+    getCollisionPoint(bird, pipe) {
+        // Calculate approximate collision point (center of overlap)
+        const birdCenterX = bird.x + bird.width / 2;
+        const birdCenterY = bird.y + bird.height / 2;
+        
+        return {
+            x: birdCenterX,
+            y: birdCenterY
+        };
     }
 
     checkCollision(bird, pipe) {
