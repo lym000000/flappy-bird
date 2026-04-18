@@ -124,11 +124,21 @@ function render() {
             TextRenderer.drawBestScore(ctx, bestScore);
         }
         
+<<<<<<< HEAD
         // Draw difficulty indicator during gameplay and game over
         drawDifficultyIndicator();
         
         // Draw coin counter during gameplay and game over
         drawCoinCounter();
+=======
+        // Draw difficulty indicator during gameplay
+        drawDifficultyIndicator();
+        
+        // Draw coin counter during gameplay
+        if (gameState === 'playing') {
+            drawCoinCounter();
+        }
+>>>>>>> 6298b4b80d399f31accb1bd01257fca71b7542cb
     }
     
     // Draw game over screen on canvas
@@ -146,7 +156,11 @@ function render() {
     }
 }
 
+<<<<<<< HEAD
 // Draw coin counter HUD (canvas-based) - moved to bottom left
+=======
+// Draw coin counter HUD (canvas-based)
+>>>>>>> 6298b4b80d399f31accb1bd01257fca71b7542cb
 function drawCoinCounter() {
     const canvasWidth = ctx.canvas.width;
     const canvasHeight = ctx.canvas.height;
@@ -195,7 +209,11 @@ function drawCoinCounter() {
     ctx.textBaseline = 'middle';
     ctx.shadowColor = 'rgba(0,0,0,0.5)';
     ctx.shadowBlur = 4;
+<<<<<<< HEAD
     ctx.fillText(coinText, x + 42, y + pillHeight / 2);
+=======
+    ctx.fillText(totalDisplay.toString(), 45, 27);
+>>>>>>> 6298b4b80d399f31accb1bd01257fca71b7542cb
 }
 
 // Game Loop
@@ -277,19 +295,33 @@ function drawDifficultyIndicator() {
     
     // Difficulty level
     ctx.fillStyle = getDifficultyColor(difficultyInfo.level);
+<<<<<<< HEAD
     ctx.font = 'bold 13px Arial';
     ctx.textAlign = 'left';
     ctx.shadowColor = 'rgba(0,0,0,0.5)';
     ctx.shadowBlur = 4;
     ctx.fillText('LEVEL ' + difficultyInfo.level, x + 8, y + 16);
+=======
+    ctx.font = 'bold 14px Arial';
+    ctx.textAlign = 'right';
+    ctx.shadowColor = 'rgba(0,0,0,0.5)';
+    ctx.shadowBlur = 4;
+    ctx.fillText(`LEVEL ${difficultyInfo.level}`, canvas.width - 20, 30);
+>>>>>>> 6298b4b80d399f31accb1bd01257fca71b7542cb
     
     // Stats
     ctx.fillStyle = '#ffffff';
     ctx.font = '11px Arial';
     ctx.shadowColor = 'rgba(0,0,0,0.5)';
     ctx.shadowBlur = 4;
+<<<<<<< HEAD
     ctx.fillText('Speed: ' + difficultyInfo.pipeSpeed.toFixed(1), x + 8, y + 32);
     ctx.fillText('Gap: ' + difficultyInfo.gap.toFixed(0) + 'px', x + 8, y + 48);
+=======
+    ctx.fillText(`Speed: ${difficultyInfo.pipeSpeed.toFixed(1)}`, canvas.width - 20, 48);
+    ctx.fillText(`Gap: ${difficultyInfo.gap.toFixed(0)}px`, canvas.width - 20, 63);
+    ctx.fillText(`Spawn: ${difficultyInfo.spawnInterval}f`, canvas.width - 20, 78);
+>>>>>>> 6298b4b80d399f31accb1bd01257fca71b7542cb
 }
 
 // Get color based on difficulty level

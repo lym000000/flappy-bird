@@ -193,11 +193,19 @@ export class TextRenderer {
         ctx.fillText('Game Over!', centerX, centerY - 100);
         ctx.restore();
         
+<<<<<<< HEAD
         // Stats lines (font sizes consistent with in-game UI: Best uses bold 14px to match in-game)
         const statsLines = [
             { text: `Score: ${score}`, fontSize: '20px Arial', color: '#ffffff' },
             { text: `Coins Collected: ${coinsCollected}`, fontSize: '18px Arial', color: '#FFD700' },
             { text: `Best Score: ${bestScore}`, fontSize: '14px Arial', color: '#2ecc71' },
+=======
+        // Stats lines
+        const statsLines = [
+            { text: `Score: ${score}`, fontSize: '20px Arial', color: '#ffffff' },
+            { text: `Coins Collected: ${coinsCollected}`, fontSize: '18px Arial', color: '#FFD700' },
+            { text: `Best Score: ${bestScore}`, fontSize: '18px Arial', color: '#2ecc71' },
+>>>>>>> 6298b4b80d399f31accb1bd01257fca71b7542cb
             { text: `Total Coins: ${totalCoins}`, fontSize: '18px Arial', color: '#3498db' },
             { text: `Difficulty Reached: Level ${difficultyLevel}`, fontSize: '16px Arial', color: '#e67e22' }
         ];
@@ -238,13 +246,21 @@ export class TextRenderer {
     }
     
     /**
+<<<<<<< HEAD
      * Draw the score at top center of canvas (moved down to avoid overlap with Best label)
+=======
+     * Draw the score at top center of canvas
+>>>>>>> 6298b4b80d399f31accb1bd01257fca71b7542cb
      * @param {CanvasRenderingContext2D} ctx 
      * @param {number} score 
      */
     static drawScore(ctx, score) {
         const centerX = ctx.canvas.width / 2;
+<<<<<<< HEAD
         const y = 90; // Position from top - moved down to avoid overlap with Best label above
+=======
+        const y = 55; // Position from top - adjusted to be fully visible within canvas
+>>>>>>> 6298b4b80d399f31accb1bd01257fca71b7542cb
         
         ctx.save();
         ctx.font = 'bold 48px Arial';
@@ -263,23 +279,41 @@ export class TextRenderer {
     }
     
     /**
+<<<<<<< HEAD
      * Draw best score at top center (above current score)
+=======
+     * Draw best score below the coin counter (left side, under coin HUD)
+>>>>>>> 6298b4b80d399f31accb1bd01257fca71b7542cb
      * @param {CanvasRenderingContext2D} ctx 
      * @param {number} bestScore 
      */
     static drawBestScore(ctx, bestScore) {
+<<<<<<< HEAD
         const centerX = ctx.canvas.width / 2;
         const y = 22; // Top center position, above the current score
+=======
+        // Position: below the coin counter (coin counter is at y=10, height=35, so ends at y=45)
+        // Place best score pill at y=55 with some spacing
+        const x = 70; // Center of coin counter area (starts at x=10, width=120, center ~70)
+        const y = 58; // Below coin counter (which ends at y=45)
+>>>>>>> 6298b4b80d399f31accb1bd01257fca71b7542cb
         
         // Background pill
         ctx.save();
         ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
         const textWidth = ctx.measureText(`Best: ${bestScore}`).width + 20;
         const pillHeight = 28;
+<<<<<<< HEAD
         this.fillRoundedRect(ctx, centerX - textWidth/2 - 10, y - pillHeight/2, textWidth + 20, pillHeight, 14);
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
         ctx.lineWidth = 1;
         this.fillRoundedRect(ctx, centerX - textWidth/2 - 10, y - pillHeight/2, textWidth + 20, pillHeight, 14, true, false);
+=======
+        this.fillRoundedRect(ctx, x - textWidth/2 - 10, y - pillHeight/2, textWidth + 20, pillHeight, 14);
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+        ctx.lineWidth = 1;
+        this.fillRoundedRect(ctx, x - textWidth/2 - 10, y - pillHeight/2, textWidth + 20, pillHeight, 14, true, false);
+>>>>>>> 6298b4b80d399f31accb1bd01257fca71b7542cb
         ctx.restore();
         
         // Text
@@ -292,7 +326,11 @@ export class TextRenderer {
         ctx.shadowOffsetX = 2;
         ctx.shadowOffsetY = 2;
         ctx.fillStyle = '#ffffff';
+<<<<<<< HEAD
         ctx.fillText(`Best: ${bestScore}`, centerX, y);
+=======
+        ctx.fillText(`Best: ${bestScore}`, x, y);
+>>>>>>> 6298b4b80d399f31accb1bd01257fca71b7542cb
         ctx.restore();
     }
     
