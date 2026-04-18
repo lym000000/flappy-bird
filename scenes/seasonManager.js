@@ -1,6 +1,6 @@
 // Season Cycle Manager
-// Handles season transitions, color interpolation, and delegates weather rendering
-import { GROUND_HEIGHT, SEASONS, WEATHER_TYPES } from '../config/constants.js';
+// Handles season transitions, day-night cycle, color interpolation, and weather rendering
+import { GROUND_HEIGHT, SEASONS, WEATHER_TYPES, DAY_THEMES, DAY_CYCLE } from '../config/constants.js';
 
 // ============================================================
 // SEASON CYCLE MANAGER
@@ -43,6 +43,25 @@ export class SeasonCycleManager {
 
         // Season transition particles
         this.transitionParticles = [];
+
+        // Day-night cycle state
+        this.dayNightPhase = 0; // 0-1 progress within the day cycle
+        this.currentDayTheme = DAY_THEMES[0];
+        this.nextDayTheme = DAY_THEMES[1];
+        this.dayThemeIndex = 0;
+        this.dayThemeProgress = 0;
+        this.dayNightTransitionAlpha = 0;
+
+        // Day-night interpolated values for rendering
+        this.currentDayNightSkyGradient = [...SEASONS[0].skyGradient];
+        this.currentDayNightCloudColor = SEASONS[0].cloudColor;
+        this.currentDayNightGroundBase = SEASONS[0].groundBase;
+        this.currentDayNightGroundTop = SEASONS[0].groundTop;
+        this.currentDayNightGroundPattern = SEASONS[0].groundPattern;
+        this.currentDayNightAmbientLight = SEASONS[0].ambientLight;
+        this.currentStarOpacity = 0;
+        this.currentMoonColor = 'rgba(200, 220, 255, 0)';
+        this.currentSunColor = 'rgba(255, 255, 100, 0)';
 
         this.canvasWidth = 400;
         this.canvasHeight = 600;
@@ -100,12 +119,126 @@ export class SeasonCycleManager {
         }
 
         this.updateWeather(frameCount);
+        this.updateDayNightCycle();
 
         if (this.seasonTransitionAlpha > 0) {
             this.seasonTransitionAlpha = Math.max(0, this.seasonTransitionAlpha - 0.005);
         }
 
         this.updateTransitionParticles();
+    }
+
+    // ============================================================
+    // DAY-NIGHT CYCLE
+    // ============================================================
+    updateDayNightCycle() {
+        // Day-night cycle runs independently of seasons
+        // Total day cycle duration is 7800 frames (~2.6 minutes)
+        const totalDayDuration = DAY_CYCLE.totalDuration;
+        this.dayThemeProgress = (this.dayThemeProgress + 1) % totalDayDuration;
+
+        // Determine current and next theme based on progress
+        let accumulatedDuration = 0;
+        let currentThemeIndex = 0;
+        let nextThemeIndex = 0;
+        let phaseProgress = 0;
+        let phaseDuration = 0;
+
+        for (let i = 0; i < DAY_CYCLE.phases.length; i++) {
+            const phase = DAY_CYCLE.phases[i];
+            const nextPhase = DAY_CYCLE.phases[(i + 1) % DAY_CYCLE.phases.length];
+
+            if (this.dayThemeProgress >= accumulatedDuration && this.dayThemeProgress < accumulatedDuration + phase.duration) {
+                currentThemeIndex = phase.themeIndex;
+                nextThemeIndex = nextPhase.themeIndex;
+                phaseProgress = this.dayThemeProgress - accumulatedDuration;
+                phaseDuration = phase.duration;
+                break;
+            }
+            accumulatedDuration += phase.duration;
+        }
+
+        // Calculate transition alpha (smooth transition in last 20% of phase)
+        const transitionPoint = phaseDuration * 0.85;
+        if (phaseProgress > transitionPoint) {
+            this.dayNightTransitionAlpha = (phaseProgress - transitionPoint) / (phaseDuration - transitionPoint);
+            this.currentDayTheme = DAY_THEMES[currentThemeIndex];
+            this.nextDayTheme = DAY_THEMES[nextThemeIndex];
+        } else {
+            this.dayNightTransitionAlpha = 0;
+            this.currentDayTheme = DAY_THEMES[currentThemeIndex];
+            this.nextDayTheme = DAY_THEMES[currentThemeIndex];
+        }
+
+        // Update interpolated day-night values
+        this.updateDayNightValues();
+    }
+
+    updateDayNightValues() {
+        const alpha = this.dayNightTransitionAlpha;
+        const current = this.currentDayTheme;
+        const next = this.nextDayTheme;
+
+        // Interpolate sky gradient
+        this.currentDayNightSkyGradient = [
+            this.interpolateColor(current.skyGradient[0], next.skyGradient[0], alpha),
+            this.interpolateColor(current.skyGradient[1], next.skyGradient[1], alpha)
+        ];
+
+        // Interpolate cloud color
+        this.currentDayNightCloudColor = this.interpolateRgba(current.cloudColor, next.cloudColor, alpha);
+
+        // Interpolate ground colors
+        this.currentDayNightGroundBase = this.interpolateColor(current.groundBase, next.groundBase, alpha);
+        this.currentDayNightGroundTop = this.interpolateColor(current.groundTop, next.groundTop, alpha);
+        this.currentDayNightGroundPattern = this.interpolateColor(current.groundPattern, next.groundPattern, alpha);
+
+        // Interpolate ambient light
+        this.currentDayNightAmbientLight = current.ambientLight + (next.ambientLight - current.ambientLight) * alpha;
+
+        // Get star opacity and moon/sun colors
+        this.currentStarOpacity = current.starOpacity + (next.starOpacity - current.starOpacity) * alpha;
+        this.currentMoonColor = this.interpolateRgba(current.moonColor, next.moonColor, alpha);
+        this.currentSunColor = this.interpolateRgba(current.sunColor, next.sunColor, alpha);
+    }
+
+    getDayNightState() {
+        return {
+            skyGradient: this.currentDayNightSkyGradient,
+            cloudColor: this.currentDayNightCloudColor,
+            groundBase: this.currentDayNightGroundBase,
+            groundTop: this.currentDayNightGroundTop,
+            groundPattern: this.currentDayNightGroundPattern,
+            ambientLight: this.currentDayNightAmbientLight,
+            starOpacity: this.currentStarOpacity,
+            moonColor: this.currentMoonColor,
+            sunColor: this.currentSunColor
+        };
+    }
+
+    getStarOpacity() {
+        return this.currentStarOpacity;
+    }
+
+    getMoonColor() {
+        return this.currentMoonColor;
+    }
+
+    getSunColor() {
+        return this.currentSunColor;
+    }
+
+    getDayNightPhaseName() {
+        // Return current phase name for display
+        let accumulatedDuration = 0;
+        for (let i = 0; i < DAY_CYCLE.phases.length; i++) {
+            const phase = DAY_CYCLE.phases[i];
+            if (this.dayThemeProgress >= accumulatedDuration && this.dayThemeProgress < accumulatedDuration + phase.duration) {
+                return DAY_THEMES[phase.themeIndex].name;
+            }
+            accumulatedDuration += phase.duration;
+        }
+        return 'Unknown';
     }
 
     transitionToNextSeason() {

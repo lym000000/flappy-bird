@@ -17,7 +17,7 @@ export const SEASONS = [
     {
         id: 'spring',
         name: 'Spring',
-        duration: 3000, // frames (~50 seconds at 60fps)
+        duration: 18000, // frames (5 minutes at 60fps)
         // Sky colors - bright, fresh spring sky
         skyGradient: ['#87CEEB', '#B0E0E6'],
         cloudColor: 'rgba(255, 255, 255, 0.85)',
@@ -39,7 +39,7 @@ export const SEASONS = [
     {
         id: 'summer',
         name: 'Summer',
-        duration: 3000,
+        duration: 18000,
         // Bright, hot summer sky
         skyGradient: ['#1E90FF', '#87CEEB'],
         cloudColor: 'rgba(255, 255, 255, 0.6)',
@@ -61,7 +61,7 @@ export const SEASONS = [
     {
         id: 'autumn',
         name: 'Autumn',
-        duration: 3000,
+        duration: 18000,
         // Overcast, golden autumn sky
         skyGradient: ['#B8860B', '#D2B48C'],
         cloudColor: 'rgba(180, 160, 140, 0.7)',
@@ -83,7 +83,7 @@ export const SEASONS = [
     {
         id: 'winter',
         name: 'Winter',
-        duration: 3000,
+        duration: 18000,
         // Cold, gray winter sky
         skyGradient: ['#778899', '#B0C4DE'],
         cloudColor: 'rgba(220, 220, 230, 0.8)',

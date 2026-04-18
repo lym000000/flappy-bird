@@ -20,9 +20,14 @@ export class Ground {
 
     draw(ctx, seasonCycle) {
         if (seasonCycle) {
-            this.drawGroundBase(ctx, seasonCycle.currentGroundBase);
-            this.drawGroundTop(ctx, seasonCycle.currentGroundTop, seasonCycle.currentGroundBase);
-            this.drawGroundPattern(ctx, seasonCycle.currentGroundPattern);
+            // Get day-night state for ground colors
+            const dayNight = seasonCycle.getDayNightState();
+
+            // Combine season colors with day-night lighting
+            // Use day-night interpolated ground colors
+            this.drawGroundBase(ctx, dayNight.groundBase);
+            this.drawGroundTop(ctx, dayNight.groundTop, dayNight.groundBase);
+            this.drawGroundPattern(ctx, dayNight.groundPattern);
         } else {
             this.drawGroundBase(ctx);
             this.drawGroundTop(ctx);

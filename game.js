@@ -399,9 +399,10 @@ function drawDifficultyIndicator() {
 function drawSeasonIndicator() {
     const seasonName = seasonCycle.getSeasonName();
     const weatherType = seasonCycle.getCurrentWeatherType();
+    const dayNightPhase = seasonCycle.getDayNightPhaseName();
     
     const pillHeight = 28;
-    const text = seasonName + ' - ' + weatherType;
+    const text = seasonName + ' ' + dayNightPhase;
     ctx.save();
     ctx.font = 'bold 13px Arial';
     const textWidth = ctx.measureText(text).width;
