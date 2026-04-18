@@ -3,11 +3,16 @@ import { GROUND_HEIGHT } from './config/constants.js';
 import { Bird } from './objects/bird.js';
 import { Pet } from './objects/pet.js';
 import { PipeManager } from './objects/pipe.js';
-import { Background, Ground } from './scenes/background.js';
+import { Background } from './scenes/background.js';
+import { SeasonCycleManager } from './scenes/seasonManager.js';
+import { Ground } from './scenes/ground.js';
 import { InputHandler } from './game/input.js';
 import { GameLoop } from './game/loops.js';
 import { TextRenderer } from './game/textRenderer.js';
 import { getParticleManager, createDeathParticles, createPipeCollisionParticles } from './objects/particles.js';
+
+// Season display element
+let seasonDisplay = null;
 
 // DOM Elements
 const canvas = document.getElementById('gameCanvas');
@@ -64,6 +69,7 @@ const particleManager = getParticleManager();
 const bird = new Bird(canvas);
 const pet = new Pet();
 const pipeManager = new PipeManager(canvas);
+const seasonCycle = new SeasonCycleManager();
 const background = new Background(canvas);
 const ground = new Ground(canvas);
 
@@ -72,6 +78,10 @@ let score = 0;
 let coinsCollected = 0;
 let bestScore = 0;
 let totalCoins = 0;
+
+// Season display timer
+let seasonDisplayTimer = 0;
+let lastSeasonName = '';
 
 // Handle player input (jump/start)
 function handleInput() {
@@ -90,6 +100,7 @@ function handleInput() {
         pet.reset();
         pipeManager.reset();
         ground.reset();
+        seasonCycle.init(canvas.width, canvas.height);
         background.init();
         gameLoop.resetFrameCount();
     }
@@ -113,12 +124,12 @@ function render() {
     const shakeOffset = particleManager.getScreenShakeOffset();
     ctx.translate(shakeOffset.x, shakeOffset.y);
 
-    // Draw background
-    background.draw(ctx);
+    // Draw background (with season cycle for sky, clouds, weather)
+    background.draw(ctx, seasonCycle);
 
     // Draw game elements
     pipeManager.draw(ctx);
-    ground.draw(ctx, background.dayCycle);
+    ground.draw(ctx, seasonCycle);
 
     // Draw bird (or bobbing animation on start screen)
     if (gameState === 'start') {
@@ -138,6 +149,9 @@ function render() {
         
         // Draw best score in top-right corner (canvas-based)
         TextRenderer.drawBestScore(ctx, bestScore);
+        
+        // Draw season indicator
+        drawSeasonIndicator();
         
         // Draw difficulty indicator during gameplay
         drawDifficultyIndicator();
@@ -240,6 +254,9 @@ const gameLoop = new GameLoop(
     // onUpdate callback
     (frameCount) => {
         if (gameState === 'playing') {
+            // Update season cycle (time-based transitions)
+            seasonCycle.update();
+
             // Update difficulty level based on score (every 5 scores)
             const currentDifficultyLevel = pipeManager.getDifficultyLevel(score);
             if (currentDifficultyLevel !== pipeManager.difficultyLevel) {
@@ -326,42 +343,90 @@ const gameLoop = new GameLoop(
 gameLoop.startUpdateLoop();
 gameLoop.startRenderLoop(render);
 
-// Draw difficulty indicator on canvas - moved to bottom right
+// Draw difficulty indicator on canvas - bottom right
 function drawDifficultyIndicator() {
     const difficultyInfo = pipeManager.getDifficultyInfo();
     const canvasWidth = ctx.canvas.width;
     const canvasHeight = ctx.canvas.height;
     
-    // Position at bottom right, above coin counter (coins at y = canvasHeight - 50)
-    // Keep minimum 10px gap between level info and coins
-    const pillWidth = 130;
-    const pillHeight = 55;
+    const pillWidth = 140;
+    const pillHeight = 60;
     const x = canvasWidth - pillWidth - 15;
-    const coinY = canvasHeight - 35 - 15; // coin counter Y position
-    const y = coinY - 10; // 10px gap above coins
+    const coinY = canvasHeight - 35 - 15;
+    const y = coinY - 10;
     
-    // Semi-transparent background for the HUD
+    // Semi-transparent background
     ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
     ctx.fillRect(x, y, pillWidth, pillHeight);
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
     ctx.lineWidth = 1;
     ctx.strokeRect(x, y, pillWidth, pillHeight);
     
-    // Difficulty level
-    ctx.fillStyle = getDifficultyColor(difficultyInfo.level);
-    ctx.font = 'bold 13px Arial';
+    // Season name with weather icon
+    const seasonName = seasonCycle.getSeasonName();
+    const weatherType = seasonCycle.getCurrentWeatherType();
+    const seasonColors = {
+        'Spring': '#4CAF50',
+        'Summer': '#FF9800',
+        'Autumn': '#FF5722',
+        'Winter': '#2196F3'
+    };
+    
+    ctx.fillStyle = seasonColors[seasonName] || '#ffffff';
+    ctx.font = 'bold 12px Arial';
     ctx.textAlign = 'left';
     ctx.shadowColor = 'rgba(0,0,0,0.5)';
     ctx.shadowBlur = 4;
-    ctx.fillText('LEVEL ' + difficultyInfo.level, x + 8, y + 16);
+    const weatherIcons = { rain: '🌧️', snow: '❄️', thunder: '⚡', wind: '💨', clear: '☀️' };
+    ctx.fillText(seasonName + ' ' + (weatherIcons[weatherType] || ''), x + 8, y + 16);
+    
+    // Difficulty level
+    ctx.fillStyle = getDifficultyColor(difficultyInfo.level);
+    ctx.font = 'bold 12px Arial';
+    ctx.shadowColor = 'rgba(0,0,0,0.5)';
+    ctx.shadowBlur = 4;
+    ctx.fillText('LEVEL ' + difficultyInfo.level, x + 8, y + 32);
     
     // Stats
     ctx.fillStyle = '#ffffff';
     ctx.font = '11px Arial';
     ctx.shadowColor = 'rgba(0,0,0,0.5)';
     ctx.shadowBlur = 4;
-    ctx.fillText('Speed: ' + difficultyInfo.pipeSpeed.toFixed(1), x + 8, y + 32);
-    ctx.fillText('Gap: ' + difficultyInfo.gap.toFixed(0) + 'px', x + 8, y + 48);
+    ctx.fillText('Speed: ' + difficultyInfo.pipeSpeed.toFixed(1), x + 8, y + 48);
+}
+
+// Draw season indicator - top left corner
+function drawSeasonIndicator() {
+    const seasonName = seasonCycle.getSeasonName();
+    const weatherType = seasonCycle.getCurrentWeatherType();
+    
+    const pillHeight = 28;
+    const text = seasonName + ' - ' + weatherType;
+    ctx.save();
+    ctx.font = 'bold 13px Arial';
+    const textWidth = ctx.measureText(text).width;
+    ctx.restore();
+    const pillWidth = textWidth + 20;
+    const x = 15;
+    const y = 10;
+    
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+    ctx.fillRect(x, y, pillWidth, pillHeight);
+    
+    const seasonColors = {
+        'Spring': '#4CAF50',
+        'Summer': '#FF9800',
+        'Autumn': '#FF5722',
+        'Winter': '#2196F3'
+    };
+    
+    ctx.fillStyle = seasonColors[seasonName] || '#ffffff';
+    ctx.font = 'bold 13px Arial';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.shadowColor = 'rgba(0,0,0,0.5)';
+    ctx.shadowBlur = 4;
+    ctx.fillText(text, x + 10, y + pillHeight / 2);
 }
 
 // Get color based on difficulty level
@@ -393,6 +458,7 @@ function startGame() {
     pet.reset();
     pipeManager.reset();
     ground.reset();
+    seasonCycle.init(canvas.width, canvas.height);
     background.init();
     gameLoop.resetFrameCount();
 }
