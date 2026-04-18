@@ -2,6 +2,47 @@
 import { GROUND_HEIGHT } from '../config/constants.js';
 
 // ============================================================
+// CELESTIAL BODIES - Animated sun and moon across the sky
+// ============================================================
+class CelestialBodies {
+    constructor(canvasWidth, canvasHeight) {
+        this.canvasWidth = canvasWidth;
+        this.canvasHeight = canvasHeight;
+        // Sun orbit: starts at right horizon at dawn, peaks at top at day, sets at right at evening
+        this.sunAngle = 0; // 0 = dawn (right side), PI/2 = noon (top), PI = dusk (left side)
+        // Moon orbit: opposite of sun
+        this.moonAngle = Math.PI;
+        this.sunX = 0;
+        this.sunY = 0;
+        this.moonX = 0;
+        this.moonY = 0;
+    }
+
+    // Update positions based on day-night phase (0-1, where 0=dawn, 0.25=day, 0.5=evening, 0.75=midnight)
+    update(dayPhase) {
+        // Map day phase to sun angle: 0=dawn(right), 0.25=noon(top), 0.5=dusk(left), 0.75=midnight(bottom), 1=dawn(right)
+        const sunAngle = dayPhase * Math.PI * 2;
+        const centerX = this.canvasWidth * 0.5;
+        const centerY = this.canvasHeight * 0.35;
+        const radiusX = this.canvasWidth * 0.45;
+        const radiusY = this.canvasHeight * 0.35;
+
+        // Sun position (semi-circle arc across the top)
+        this.sunX = centerX + Math.cos(sunAngle) * radiusX;
+        this.sunY = centerY - Math.sin(sunAngle) * radiusY;
+
+        // Moon position (opposite of sun)
+        const moonAngle = (dayPhase + 0.5) * Math.PI * 2;
+        this.moonX = centerX + Math.cos(moonAngle) * radiusX;
+        this.moonY = centerY - Math.sin(moonAngle) * radiusY;
+    }
+
+    isAboveHorizon(x, y) {
+        return y > 0 && y < this.canvasHeight * 0.6;
+    }
+}
+
+// ============================================================
 // PARALLAX CLOUD CONFIGURATION
 // ============================================================
 const PARALLAX_LAYERS = [
@@ -55,6 +96,7 @@ export class Background {
         this.canvas = canvas;
         this.clouds = [];
         this.initialized = false;
+        this.celestialBodies = new CelestialBodies(canvas.width, canvas.height);
     }
 
     init() {
@@ -84,6 +126,7 @@ export class Background {
     }
 
     update(groundSpeed) {
+        // Always update clouds (even when not playing) for continuous animation
         this.clouds.forEach(cloud => {
             cloud.update(groundSpeed);
         });
@@ -106,22 +149,36 @@ export class Background {
         ctx.fillStyle = skyGradient;
         ctx.fillRect(0, 0, this.canvas.width, this.canvas.height - GROUND_HEIGHT);
 
+        // Update celestial body positions based on day-night phase from seasonCycle
+        const dayNightPhase = seasonCycle.getDayNightPhase();
+        this.celestialBodies.update(dayNightPhase);
+
         // Draw stars (visible during night/midnight)
         if (dayNight.starOpacity > 0.05) {
             this.drawStars(ctx, dayNight.starOpacity);
         }
 
-        // Draw moon (visible during evening/midnight/dawn)
+        // Draw moon (visible when moon color has alpha > 0.1)
         const moonColor = dayNight.moonColor;
-        if (moonColor && moonColor.includes('0.') && parseFloat(moonColor.split(', ')[2]) > 100) {
+        const moonAlpha = this.extractAlpha(moonColor);
+        if (moonAlpha > 0.1) {
             this.drawMoon(ctx, dayNight.moonColor);
         }
 
-        // Draw sun (visible during day/dawn)
+        // Draw sun (visible when sun color alpha > 0.1)
         const sunColor = dayNight.sunColor;
-        if (sunColor && sunColor.includes('255') && parseFloat(sunColor.split(', ')[0]) > 200) {
+        const sunAlpha = this.extractAlpha(sunColor);
+        if (sunAlpha > 0.1) {
             this.drawSun(ctx, dayNight.sunColor);
         }
+    }
+
+    extractAlpha(colorStr) {
+        const match = colorStr.match(/[\d.]+/g);
+        if (match && match.length >= 4) {
+            return parseFloat(match[3]);
+        }
+        return 0;
     }
 
     drawStars(ctx, opacity) {
@@ -149,20 +206,23 @@ export class Background {
     }
 
     drawMoon(ctx, color) {
-        ctx.save();
+        // Skip if moon is below horizon
+        if (this.celestialBodies.moonY > this.canvas.height * 0.6) return;
 
-        // Moon position (upper right area)
-        const moonX = this.canvas.width * 0.75;
-        const moonY = this.canvas.height * 0.12;
+        const moonX = this.celestialBodies.moonX;
+        const moonY = this.celestialBodies.moonY;
         const moonRadius = 25;
 
+        ctx.save();
+
         // Draw moon glow
-        const glowGradient = ctx.createRadialGradient(moonX, moonY, moonRadius * 0.5, moonX, moonY, moonRadius * 2);
-        glowGradient.addColorStop(0, 'rgba(200, 220, 255, 0.2)');
+        const glowGradient = ctx.createRadialGradient(moonX, moonY, moonRadius * 0.5, moonX, moonY, moonRadius * 2.5);
+        glowGradient.addColorStop(0, 'rgba(200, 220, 255, 0.25)');
+        glowGradient.addColorStop(0.6, 'rgba(200, 220, 255, 0.08)');
         glowGradient.addColorStop(1, 'rgba(200, 220, 255, 0)');
         ctx.fillStyle = glowGradient;
         ctx.beginPath();
-        ctx.arc(moonX, moonY, moonRadius * 2, 0, Math.PI * 2);
+        ctx.arc(moonX, moonY, moonRadius * 2.5, 0, Math.PI * 2);
         ctx.fill();
 
         // Draw moon body
@@ -171,38 +231,55 @@ export class Background {
         ctx.arc(moonX, moonY, moonRadius, 0, Math.PI * 2);
         ctx.fill();
 
-        // Moon craters
-        ctx.fillStyle = 'rgba(180, 190, 200, 0.3)';
+        // Moon craters (subtle)
+        ctx.fillStyle = 'rgba(180, 190, 200, 0.25)';
         ctx.beginPath();
-        ctx.arc(moonX - 5, moonY - 3, 5, 0, Math.PI * 2);
+        ctx.arc(moonX - 6, moonY - 4, 5, 0, Math.PI * 2);
         ctx.fill();
         ctx.beginPath();
-        ctx.arc(moonX + 8, moonY + 5, 4, 0, Math.PI * 2);
+        ctx.arc(moonX + 7, moonY + 6, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(moonX + 2, moonY + 10, 3, 0, Math.PI * 2);
         ctx.fill();
 
         ctx.restore();
     }
 
     drawSun(ctx, color) {
-        ctx.save();
+        // Skip if sun is below horizon
+        if (this.celestialBodies.sunY > this.canvas.height * 0.55) return;
 
-        // Sun position (lower right during day, horizon during dawn)
-        const sunX = this.canvas.width * 0.8;
-        const sunY = this.canvas.height * 0.15;
+        const sunX = this.celestialBodies.sunX;
+        const sunY = this.celestialBodies.sunY;
         const sunRadius = 30;
 
-        // Draw sun glow
-        const glowGradient = ctx.createRadialGradient(sunX, sunY, sunRadius * 0.3, sunX, sunY, sunRadius * 3);
-        glowGradient.addColorStop(0, 'rgba(255, 200, 50, 0.4)');
-        glowGradient.addColorStop(0.5, 'rgba(255, 150, 30, 0.1)');
-        glowGradient.addColorStop(1, 'rgba(255, 100, 0, 0)');
-        ctx.fillStyle = glowGradient;
+        ctx.save();
+
+        // Draw sun glow (multi-layered for realistic effect)
+        const glowGradient3 = ctx.createRadialGradient(sunX, sunY, sunRadius * 0.5, sunX, sunY, sunRadius * 5);
+        glowGradient3.addColorStop(0, 'rgba(255, 220, 100, 0.15)');
+        glowGradient3.addColorStop(1, 'rgba(255, 150, 50, 0)');
+        ctx.fillStyle = glowGradient3;
+        ctx.beginPath();
+        ctx.arc(sunX, sunY, sunRadius * 5, 0, Math.PI * 2);
+        ctx.fill();
+
+        const glowGradient2 = ctx.createRadialGradient(sunX, sunY, sunRadius * 0.3, sunX, sunY, sunRadius * 3);
+        glowGradient2.addColorStop(0, 'rgba(255, 200, 50, 0.35)');
+        glowGradient2.addColorStop(0.5, 'rgba(255, 150, 30, 0.1)');
+        glowGradient2.addColorStop(1, 'rgba(255, 100, 0, 0)');
+        ctx.fillStyle = glowGradient2;
         ctx.beginPath();
         ctx.arc(sunX, sunY, sunRadius * 3, 0, Math.PI * 2);
         ctx.fill();
 
-        // Draw sun body
-        ctx.fillStyle = color;
+        // Draw sun body (bright warm white/yellow)
+        const sunBodyGradient = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, sunRadius);
+        sunBodyGradient.addColorStop(0, '#FFF8E0');
+        sunBodyGradient.addColorStop(0.5, '#FFD700');
+        sunBodyGradient.addColorStop(1, '#FFA500');
+        ctx.fillStyle = sunBodyGradient;
         ctx.beginPath();
         ctx.arc(sunX, sunY, sunRadius, 0, Math.PI * 2);
         ctx.fill();

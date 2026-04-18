@@ -124,6 +124,13 @@ function render() {
     const shakeOffset = particleManager.getScreenShakeOffset();
     ctx.translate(shakeOffset.x, shakeOffset.y);
 
+    // Always update season cycle and background for continuous animation
+    // This ensures the background keeps animating during main menu and game over
+    seasonCycle.update();
+    if (background.initialized) {
+        background.update(0.3); // Slow atmospheric drift
+    }
+
     // Draw background (with season cycle for sky, clouds, weather)
     background.draw(ctx, seasonCycle);
 

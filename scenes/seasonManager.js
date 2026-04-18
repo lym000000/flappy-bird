@@ -216,6 +216,23 @@ export class SeasonCycleManager {
         };
     }
 
+    // Get day-night phase (0-1) for celestial body positioning
+    getDayNightPhase() {
+        // Calculate overall phase within the full day cycle
+        let accumulatedDuration = 0;
+        for (let i = 0; i < DAY_CYCLE.phases.length; i++) {
+            const phase = DAY_CYCLE.phases[i];
+            if (this.dayThemeProgress >= accumulatedDuration && this.dayThemeProgress < accumulatedDuration + phase.duration) {
+                const phaseStart = accumulatedDuration;
+                const phaseProgress = this.dayThemeProgress - phaseStart;
+                // Return the overall progress across all phases
+                return (phaseStart + phaseProgress) / DAY_CYCLE.totalDuration;
+            }
+            accumulatedDuration += phase.duration;
+        }
+        return 0;
+    }
+
     getStarOpacity() {
         return this.currentStarOpacity;
     }
@@ -385,18 +402,22 @@ export class SeasonCycleManager {
         const canvasWidth = this.canvasWidth;
         const canvasHeight = this.canvasHeight;
 
+        // Rain - only spawn occasionally (reduce frequency significantly)
         if (weather.primary === 'rain' || weather.secondaryChance.rain > 0) {
-            const rainCount = Math.floor(weather.rainDensity * 5);
-            for (let i = 0; i < rainCount; i++) {
-                if (Math.random() < 0.3) {
-                    this.weatherState.raindrops.push({
-                        x: canvasWidth + Math.random() * 100 + this.weatherState.windStrength * 20,
-                        y: -10,
-                        length: 10 + Math.random() * 15,
-                        speed: weather.rainSpeed * (0.8 + Math.random() * 0.4),
-                        opacity: 0.3 + Math.random() * 0.4,
-                        windOffset: this.weatherState.windStrength * 3
-                    });
+            // Only spawn rain every 5th frame instead of every frame
+            if (frameCount % 5 === 0 && Math.random() < weather.secondaryChance.rain * 0.3) {
+                const rainCount = Math.floor(weather.rainDensity * 3);
+                for (let i = 0; i < rainCount; i++) {
+                    if (Math.random() < 0.25) {
+                        this.weatherState.raindrops.push({
+                            x: canvasWidth + Math.random() * 100 + this.weatherState.windStrength * 20,
+                            y: -10,
+                            length: 10 + Math.random() * 15,
+                            speed: weather.rainSpeed * (0.8 + Math.random() * 0.4),
+                            opacity: 0.3 + Math.random() * 0.4,
+                            windOffset: this.weatherState.windStrength * 3
+                        });
+                    }
                 }
             }
         }
