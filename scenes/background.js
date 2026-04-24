@@ -132,15 +132,15 @@ export class Background {
         });
     }
 
-    draw(ctx, seasonCycle) {
-        this.drawSky(ctx, seasonCycle);
-        this.drawClouds(ctx, seasonCycle);
-        seasonCycle.drawWeather(ctx);
+    draw(ctx, seasonManager) {
+        this.drawSky(ctx, seasonManager);
+        this.drawClouds(ctx, seasonManager);
+        seasonManager.drawWeather(ctx);
     }
 
-    drawSky(ctx, seasonCycle) {
+    drawSky(ctx, seasonManager) {
         // Get day-night state for sky colors
-        const dayNight = seasonCycle.getDayNightState();
+        const dayNight = seasonManager.getDayNightState();
 
         // Use day-night interpolated sky gradient (combines season + day/night)
         const skyGradient = ctx.createLinearGradient(0, 0, 0, this.canvas.height - GROUND_HEIGHT);
@@ -149,8 +149,8 @@ export class Background {
         ctx.fillStyle = skyGradient;
         ctx.fillRect(0, 0, this.canvas.width, this.canvas.height - GROUND_HEIGHT);
 
-        // Update celestial body positions based on day-night phase from seasonCycle
-        const dayNightPhase = seasonCycle.getDayNightPhase();
+        // Update celestial body positions based on day-night phase from seasonManager
+        const dayNightPhase = seasonManager.getDayNightPhase();
         this.celestialBodies.update(dayNightPhase);
 
         // Draw stars (visible during night/midnight)
@@ -287,13 +287,13 @@ export class Background {
         ctx.restore();
     }
 
-    drawClouds(ctx, seasonCycle) {
+    drawClouds(ctx, seasonManager) {
         const sortedLayers = [...PARALLAX_LAYERS].sort((a, b) => a.speedMultiplier - b.speedMultiplier);
 
         for (const layer of sortedLayers) {
             const layerClouds = this.clouds.filter(c => c.parallaxLayer === layer);
             for (const cloud of layerClouds) {
-                cloud.draw(ctx, seasonCycle.currentCloudColor);
+                cloud.draw(ctx, seasonManager.currentCloudColor);
             }
         }
     }

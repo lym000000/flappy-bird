@@ -18,10 +18,10 @@ export class Ground {
         this.offset = (this.offset + groundSpeed) % 24;
     }
 
-    draw(ctx, seasonCycle) {
-        if (seasonCycle) {
+    draw(ctx, seasonManager) {
+        if (seasonManager) {
             // Get day-night state for ground colors
-            const dayNight = seasonCycle.getDayNightState();
+            const dayNight = seasonManager.getDayNightState();
 
             // Combine season colors with day-night lighting
             // Use day-night interpolated ground colors

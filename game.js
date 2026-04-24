@@ -4,7 +4,7 @@ import { Bird } from './objects/bird.js';
 import { Pet } from './objects/pet.js';
 import { PipeManager } from './objects/pipe.js';
 import { Background } from './scenes/background.js';
-import { SeasonCycleManager } from './scenes/seasonManager.js';
+import { SeasonManager } from './scenes/seasonManager.js';
 import { Ground } from './scenes/ground.js';
 import { InputHandler } from './game/input.js';
 import { GameLoop } from './game/loops.js';
@@ -69,7 +69,7 @@ const particleManager = getParticleManager();
 const bird = new Bird(canvas);
 const pet = new Pet();
 const pipeManager = new PipeManager(canvas);
-const seasonCycle = new SeasonCycleManager();
+const seasonCycle = new SeasonManager();
 const background = new Background(canvas);
 const ground = new Ground(canvas);
 
