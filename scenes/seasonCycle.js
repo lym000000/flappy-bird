@@ -49,6 +49,9 @@ export class SeasonCycleManager {
         // Set canvas size on weather particles
         if (this.weatherParticles) {
             this.weatherParticles.setCanvasSize(canvasWidth, canvasHeight);
+            // Initialize and set initial weather state for main menu background animation
+            this.weatherParticles.init();
+            this.weatherParticles.setState(this.currentWeatherConfig);
         }
 
         this.initialized = true;
@@ -259,7 +262,8 @@ export class SeasonCycleManager {
 
     drawWeather(ctx) {
         if (this.weatherRenderer) {
-            this.weatherRenderer.draw(ctx, this.canvasWidth, this.canvasHeight);
+            const weatherState = this.getWeatherState();
+            this.weatherRenderer.draw(ctx, this.canvasWidth, this.canvasHeight, weatherState);
         }
         if (this.transitionParticles) {
             this.transitionParticles.draw(ctx);
