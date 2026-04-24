@@ -346,6 +346,12 @@ const gameLoop = new GameLoop(
     render
 );
 
+// Initialize SeasonManager at startup for main menu background animation
+// This enables continuous season cycling, day/night cycle, and weather effects on the main menu screen
+seasonCycle.init(canvas.width, canvas.height);
+background.init();
+ground.init();
+
 // Start the game loops
 gameLoop.startUpdateLoop();
 gameLoop.startRenderLoop(render);

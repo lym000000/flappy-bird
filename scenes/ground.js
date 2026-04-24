@@ -10,6 +10,10 @@ export class Ground {
         this.offset = 0;
     }
 
+    init() {
+        this.offset = 0;
+    }
+
     reset() {
         this.offset = 0;
     }
